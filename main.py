@@ -52,7 +52,7 @@ def sendPoopWeight(weight):
     try:
         response = requests.post(url, json=payload)
         if response.status_code == 200:
-            print("Poop weight inserted successfully!")
+            print("Poop Weight inserted successfully!")
         else:
             print(f"Failed to send data. Status code: {response.status_code}")
     except requests.exceptions.RequestException as e:
@@ -86,7 +86,7 @@ def showSensorValues():
 def showValuesWhilePooping():
     sys.stdout.write("\r")
     sys.stdout.write("\033[K")
-    sys.stdout.write(f"Weight increase detected! Current Value: {val}, Running Average: {runningAverage} Cat Weight: {catWeight}" )
+    sys.stdout.write(f"Weight increase detected! Current Value: {val}, Cat Weight: {catWeight}\n" )
     sys.stdout.flush()
     time.sleep(0.1)
 
@@ -96,6 +96,7 @@ while True:
         poopWeight = 0
         catWeight = 0
         totalWeight = 0
+        lastCatWeight = 0
         val = hx.get_weight(5)
         hx.power_down()
         hx.power_up()
@@ -117,25 +118,28 @@ while True:
             totalWeight = 0
             
             for _ in range(counter):
-                weight = hx.get_weight(5)
-                totalWeight += weight
+                val = hx.get_weight(5)
+                totalWeight += val
                 time.sleep(0.1)
-            catWeight = totalWeight / counter
-            # print(f"Cat Weight: {catWeight}")
+            newCatWeight = totalWeight / counter
+            if newCatWeight >= lastCatWeight * 0.9:
+                catWeight = newCatWeight
+            lastCatWeight = catWeight
             showValuesWhilePooping()
             poopInside = True
 
         if poopInside:
             sendCatWeight(catWeight)
+            print(f"Cat Weight sent: {catWeight}")
             totalWeight = 0
             for _ in range(counter):
                 weight = hx.get_weight(5)
                 totalWeight += weight
                 time.sleep(0.1)
             poopWeight = totalWeight / counter
-            #print(f"Poop Weight: {poopWeight}")
             time.sleep(2)
             sendPoopWeight(poopWeight)
+            print(f"Poop Weight sent: {poopWeight}")
             poopInside = False
 
 
