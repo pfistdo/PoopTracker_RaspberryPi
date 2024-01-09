@@ -2,6 +2,90 @@ import time
 import sys
 import requests
 from mq import *
+from twilio.rest import Client
+
+def tare():
+    hx.reset()
+    hx.tare()
+    print("Tare done!")
+
+def sendCatWeight(weight):
+    url = "https://poop-tracker-48b06530794b.herokuapp.com/weights/"
+    payload = {"weight": int(weight),"cat_ID": 4}
+    try:
+        response = requests.post(url, json=payload)
+        if response.status_code == 200:
+            print("Cat Weight inserted successfully!")
+        else:
+            print(f"Failed to send data. Status code: {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error: {e}")
+
+def sendPoopWeight(weight):
+    url = "https://poop-tracker-48b06530794b.herokuapp.com/poops/"
+    payload = {"weight": int(weight)}
+    try:
+        response = requests.post(url, json=payload)
+        if response.status_code == 200:
+            print("Poop Weight inserted successfully!")
+        else:
+            print(f"Failed to send data. Status code: {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error: {e}")
+
+def sendAirQuality(smoke, co, lpg):
+    url = "https://poop-tracker-48b06530794b.herokuapp.com/poops/"
+    payload = {"lpg": int(lpg), "co": int(co), "smoke": int(smoke)}
+    try:
+        response = requests.post(url, json=payload)
+        if response.status_code == 200:
+            print("Air Quality inserted successfully!")
+        else:
+            print(f"Failed to send data. Status code: {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error: {e}")           
+
+def updateMeasurementHistory(weight):
+    if len(measurement_history) >= 5:
+        measurement_history.pop(0)  # Remove the oldest measurement
+    measurement_history.append(weight)  # Add the new measurement
+
+def calculateAverageHistory():
+    if measurement_history:
+        return sum(measurement_history) / len(measurement_history)
+    return 0
+
+def measureAirQuality():
+    perc = mq.MQPercentage()
+    sys.stdout.write("\r")
+    sys.stdout.write("\033[K")
+    #sys.stdout.write("LPG: %g ppm, CO: %g ppm, Smoke: %g ppm" % (perc["GAS_LPG"], perc["CO"], perc["SMOKE"]))
+    print(int(perc["GAS_LPG"]), int(perc["CO"]), int(perc["SMOKE"]))
+    sendAirQuality(perc["GAS_LPG"], perc["CO"], perc["SMOKE"])
+    sys.stdout.flush()
+    time.sleep(0.1)
+
+def showSensorValues():
+    sys.stdout.write("\r")
+    sys.stdout.write("\033[K")
+    sys.stdout.write(f"Current Value: {val}, Running Average: {runningAverage}")
+    sys.stdout.flush()
+    time.sleep(0.1)
+
+def showValuesWhilePooping():
+    sys.stdout.write("\r")
+    sys.stdout.write("\033[K")
+    sys.stdout.write(f"Weight increase detected! Current Value: {val}, Cat Weight: {catWeight}\n" )
+    sys.stdout.flush()
+    time.sleep(0.1)
+
+def sendPoopMessage():
+    client.messages \
+                .create(
+                     body="Poop detected!",
+                     from_='whatsapp:+14155238886',
+                     to='whatsapp:+41765791318'
+                 )
 
 EMULATE_HX711 = False
 
@@ -26,98 +110,71 @@ def cleanAndExit():
 hx = HX711(5, 6)
 hx.set_reading_format("MSB", "MSB")
 hx.set_reference_unit(referenceUnit)
-hx.reset()
-hx.tare()
-print("Tare done!")
-# mq = MQ()
+tare()
+mq = MQ()
 
-def send_cat_weight(weight):
-    url = "https://poop-tracker-48b06530794b.herokuapp.com/cats/"
-    payload = {"weight": float(weight)}
-    try:
-        response = requests.post(url, json=payload)
-        if response.status_code == 200:
-            print("Cat weight inserted successfully!")
-        else:
-            print(f"Failed to send data. Status code: {response.status_code}")
-    except requests.exceptions.RequestException as e:
-        print(f"Error: {e}")
-
-def send_poop_weight(weight):
-    url = "https://poop-tracker-48b06530794b.herokuapp.com/poops/"
-    payload = {"weight": int(weight)}
-    try:
-        response = requests.post(url, json=payload)
-        if response.status_code == 200:
-            print("Poop weight inserted successfully!")
-        else:
-            print(f"Failed to send data. Status code: {response.status_code}")
-    except requests.exceptions.RequestException as e:
-        print(f"Error: {e}")        
-
-def update_measurement_history(weight):
-    if len(measurement_history) >= 5:
-        measurement_history.pop(0)  # Remove the oldest measurement
-    measurement_history.append(weight)  # Add the new measurement
-
-def calculate_average_history():
-    if measurement_history:
-        return sum(measurement_history) / len(measurement_history)
-    return 0
-
-def measure_air_quality():
-    perc = mq.MQPercentage()
-    sys.stdout.write("\r")
-    sys.stdout.write("\033[K")
-    sys.stdout.write("LPG: %g ppm, CO: %g ppm, Smoke: %g ppm" % (perc["GAS_LPG"], perc["CO"], perc["SMOKE"]))
-    sys.stdout.flush()
-    time.sleep(0.1)
+poopWeight = 0
+catWeight = 0
+totalWeight = 0
+lastMeasurementTime = time.time()
+account_sid = 'ACa1decc9dbef0c0e90bbd2db9a7e42931'
+auth_token = '30fcc286a892254d0e30eed68a5f4166'
+client = Client(account_sid, auth_token)
 
 while True:
     try:
         poopInside = False
-        poop_weight = 0
-        cat_weight = 0
-        total_weight = 0
+        poopWeight = 0
+        catWeight = 0
+        totalWeight = 0
+        lastCatWeight = 0
         val = hx.get_weight(5)
-        print(val)
         hx.power_down()
         hx.power_up()
         time.sleep(0.1)
 
-        # measure_air_quality()
+        if time.time() - lastMeasurementTime > 3:
+             measureAirQuality()
+             lastMeasurementTime = time.time()
+             tare()
 
-        update_measurement_history(val)  # Update the measurement history
-        running_average = calculate_average_history()  # Calculate the running average
-        print(f"Running Average: {running_average}")
+
+        updateMeasurementHistory(val)  # Update the measurement history
+        runningAverage = calculateAverageHistory()  # Calculate the running average
+        showSensorValues()
 
         while val > 100:
-            print("Weight increase detected.")
             val = hx.get_weight(5)
-            print(val)
             hx.power_down()
             hx.power_up()
             time.sleep(0.1)
-            total_weight = 0
+            totalWeight = 0
             
             for _ in range(counter):
-                weight = hx.get_weight(5)
-                total_weight += weight
+                val = hx.get_weight(5)
+                totalWeight += val
                 time.sleep(0.1)
-            cat_weight = total_weight / counter
-            print(f"Cat Weight: {cat_weight}")
+            newCatWeight = totalWeight / counter
+            if newCatWeight >= lastCatWeight * 0.9:
+                catWeight = newCatWeight
+            lastCatWeight = catWeight
+            showValuesWhilePooping()
             poopInside = True
 
         if poopInside:
-            send_cat_weight(cat_weight)
-            total_weight = 0
+            sendCatWeight(catWeight)
+            print(f"Cat Weight sent: {catWeight}")
+            totalWeight = 0
             for _ in range(counter):
                 weight = hx.get_weight(5)
-                total_weight += weight
+                totalWeight += weight
                 time.sleep(0.1)
-            poop_weight = total_weight / counter
-            print(f"Poop Weight: {poop_weight}")
-            send_poop_weight(poop_weight)
+            poopWeight = totalWeight / counter
+            time.sleep(2)
+            sendPoopWeight(poopWeight)
+            #sendPoopMessage()
+            print(f"Poop Weight sent: {poopWeight}")
+            tare()
             poopInside = False
 
 
