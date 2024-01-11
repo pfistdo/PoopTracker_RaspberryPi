@@ -45,6 +45,18 @@ def sendLiveWeight(weight):
     except requests.exceptions.RequestException as e:
         print(f"Error: {e}")
 
+def sendLiveWeight(weight):
+    url = "https://poop-tracker-48b06530794b.herokuapp.com/liveWeights/"
+    payload = {"weight": int(weight)}
+    try:
+        response = requests.post(url, json=payload)
+        if response.status_code == 200:
+            return
+        else:
+            print(f"Failed to send data. Status code: {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error: {e}")
+
 def sendAirQuality(smoke, co, lpg):
     url = "https://poop-tracker-48b06530794b.herokuapp.com/air_qualities/"
     payload = {"smoke": int(1000*smoke), "co": int(1000*co), "lpg": int(1000*lpg)}
@@ -114,14 +126,13 @@ def showValuesWhilePooping():
     sys.stdout.flush()
     time.sleep(0.1)
 
-def sendPoopMessage(telephoneNumbers, poopWeight):
-    for number in telephoneNumbers:
-        message = client.messages.create(
-            body='Your cat has pooped! The trophy weighs ' + str(int(poopWeight)) + ' grams.',
-            from_='whatsapp:+14155238886',
-            to='whatsapp:'+number['telnr']
-        )
-    
+def sendPoopMessage():
+    client.messages \
+                .create(
+                     body="Poop detected!",
+                     from_='whatsapp:+14155238886',
+                     to='whatsapp:+41765791318'
+                 )
 
 EMULATE_HX711 = False
 
