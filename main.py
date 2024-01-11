@@ -126,13 +126,13 @@ def showValuesWhilePooping():
     sys.stdout.flush()
     time.sleep(0.1)
 
-def sendPoopMessage():
-    client.messages \
-                .create(
-                     body="Poop detected!",
-                     from_='whatsapp:+14155238886',
-                     to='whatsapp:+41765791318'
-                 )
+def sendPoopMessage(telephoneNumbers, poopWeight):
+    for number in telephoneNumbers:
+        message = client.messages.create(
+            body='Your cat has pooped! The trophy weighs ' + str(int(poopWeight)) + ' grams.',
+            from_='whatsapp:+14155238886',
+            to='whatsapp:'+number['telnr']
+        )
 
 EMULATE_HX711 = False
 
@@ -212,6 +212,7 @@ while True:
                 catWeight = newCatWeight
             lastCatWeight = catWeight
             showValuesWhilePooping()
+            sendLiveWeight(val)
             poopInside = True
 
         if poopInside:
