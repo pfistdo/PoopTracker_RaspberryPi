@@ -121,8 +121,6 @@ def sendPoopMessage(telephoneNumbers, poopWeight):
             from_='whatsapp:+14155238886',
             to='whatsapp:'+number['telnr']
         )
-        print('whatsapp:'+number['telnr'])
-        print(message.sid)
     
 
 EMULATE_HX711 = False
