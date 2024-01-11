@@ -9,8 +9,6 @@ Main.py contains the full application to run the RaspberryPi. The other .py Appl
 
 ```
 PoopTracker_Test/
-┣ __pycache__/
-┣ venv/
 ┣ .gitignore
 ┣ MCP3008.py
 ┣ README.md
